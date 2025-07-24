@@ -24,6 +24,13 @@ spec:
             items:
               - key: init.sql
                 path: init.sql
+      initContainers:
+        - name: clean-postgres-data
+          image: busybox:latest
+          command: ["sh", "-c", "rm -rf /var/lib/postgresql/data/* && mkdir -p /var/lib/postgresql/data && chown -R 999:999 /var/lib/postgresql/data"]
+          volumeMounts:
+            - name: db-verifikator-persistent-storage
+              mountPath: /var/lib/postgresql/data
       containers:
         - name: db-verifikator
           image: postgres:17
@@ -41,6 +48,24 @@ spec:
               mountPath: /var/lib/postgresql/data
             - name: db-verifikator-init-script
               mountPath: /docker-entrypoint-initdb.d
+          # OVERRIDE DEFAULT ENTRYPOINT COMMAND UNTUK MEMAKSA EKSEKUSI init.sql
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Jalankan skrip entrypoint default PostgreSQL terlebih dahulu di background
+              # Ini penting agar PostgreSQL dimulai dengan benar dan menginisialisasi PGDATA
+              /usr/local/bin/docker-entrypoint.sh postgres &
+              # Tunggu hingga PostgreSQL siap menerima koneksi
+              until pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}; do
+                echo "Menunggu PostgreSQL siap..."
+                sleep 2
+              done
+              echo "PostgreSQL sudah siap. Mengeksekusi init.sql..."
+              # Eksekusi skrip init.sql secara eksplisit
+              psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /docker-entrypoint-initdb.d/init.sql
+              echo "Eksekusi init.sql selesai."
+              # Biarkan kontainer tetap berjalan (penting agar deployment tidak mati)
+              wait
           livenessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U postgres -d dukcapil_ktp"]

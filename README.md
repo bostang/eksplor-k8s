@@ -2,6 +2,25 @@
 
 ## Catatan Command
 
+### Debugging pods
+
+```bash
+# menampilkan environment variable
+minikube kubectl -- exec -it db-verifikator-deployment-8577fd7498-tjqpd -- env
+
+# menampilkan file di dalam direktori tertentu
+minikube kubectl -- exec -it db-verifikator-deployment-8577fd7498-tjqpd -- ls /docker-entrypoint-initdb.d/
+
+# menjalankan container (docker exec)
+minikube kubectl -- exec -it db-verifikator-deployment-8577fd7498-tjqpd -- /bin/bash
+
+# menjalankan postgres
+minikube kubectl -- exec -it db-verifikator-deployment-8577fd7498-tjqpd -- psql -U postgres
+
+# setelah melakukan kubectl apply, bisa tunggu hingga container ready dengan:
+minikube kubectl -- get pods -w     # -w : watch
+```
+
 ### Flow Dasar
 
 ```bash
@@ -70,4 +89,11 @@ minikube kubectl -- delete pod -l app=db-verifikator
 # verifikasi telah terhapus
 minikube kubectl -- get pvc
 
+```
+
+#### Hapus PV (persistent volume)
+
+```bash
+minikube kubectl -- get pv
+minikube kubectl -- delete pv [nama-pv]
 ```
