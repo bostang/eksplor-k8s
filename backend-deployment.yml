@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: bostang/secure-onboarding-system-backend:latest
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://db-backend-service:5432/customer_registration
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+            - name: SERVER_PORT
+              value: "8080"
+            - name: JWT_SECRET
+              value: superSecretKeyForHS512AlgorithmThatIsAtLeastSixtyFourCharactersLongForStrongSecurity12345!@#$%^&*()
+            - name: JWT_EXPIRATION
+              value: "86400000"
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---

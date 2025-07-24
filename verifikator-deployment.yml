@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: verifikator-deployment
+  labels:
+    app: verifikator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: verifikator
+  template:
+    metadata:
+      labels:
+        app: verifikator
+    spec:
+      containers:
+        - name: verifikator
+          image: bostang/secure-onboarding-system-verifikator:latest
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://db-verifikator-service:5432/dukcapil_ktp
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+            - name: SERVER_PORT
+              value: "8081"
+          ports:
+            - containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---

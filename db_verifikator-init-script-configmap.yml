@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-verifikator-init-script-config
+data:
+  init.sql: |
+    -- Isi dari ./verificator-secure-onboarding-system/sql/database_DOCKER.sql
+    -- Contoh isi:
+    -- CREATE TABLE IF NOT EXISTS ktp_data (
+    --     nik VARCHAR(16) PRIMARY KEY,
+    --     nama VARCHAR(255) NOT NULL
+    -- );
+    -- INSERT INTO ktp_data (nik, nama) VALUES ('1234567890123456', 'Budi Santoso');

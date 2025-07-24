@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-backend-deployment
+  labels:
+    app: db-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-backend
+  template:
+    metadata:
+      labels:
+        app: db-backend
+    spec:
+      volumes:
+        - name: db-backend-persistent-storage
+          persistentVolumeClaim:
+            claimName: db-backend-pvc
+        - name: db-backend-init-script
+          configMap:
+            name: db-backend-init-script-config
+      initContainers:
+        - name: init-db-backend
+          image: postgres:17
+          command: ["sh", "-c", "cp /config/init.sql /docker-entrypoint-initdb.d/init.sql && chmod +x /docker-entrypoint-initdb.d/init.sql"]
+          volumeMounts:
+            - name: db-backend-init-script
+              mountPath: /config
+            - name: db-backend-persistent-storage
+              mountPath: /docker-entrypoint-initdb.d/
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password
+      containers:
+        - name: db-backend
+          image: postgres:17
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password
+            - name: POSTGRES_DB
+              value: customer_registration
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: db-backend-persistent-storage
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
+---

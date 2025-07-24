@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-backend-init-script-config
+data:
+  init.sql: |
+    -- Isi dari ./backend-secure-onboarding-system/sql/database_setup_DOCKER.sql
+    -- Contoh isi:
+    -- CREATE TABLE IF NOT EXISTS users (
+    --     id SERIAL PRIMARY KEY,
+    --     username VARCHAR(255) NOT NULL UNIQUE,
+    --     password VARCHAR(255) NOT NULL
+    -- );
+    -- INSERT INTO users (username, password) VALUES ('admin', 'adminpassword');
