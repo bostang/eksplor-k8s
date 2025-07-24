@@ -2,6 +2,8 @@
 
 ## Catatan Command
 
+### Flow Dasar
+
 ```bash
 minikube start
 minikube status # cek running / tidak
@@ -27,8 +29,45 @@ minikube kubectl -- logs backend-deployment-6fb5d5bc7b-zl4ls
 # lihat url frontend (accesible via browser)
 minikube service frontend-service --url
 
+# ketika ada perubahan pada .yml hapus lalu `minikube kubectl -- apply -f .` lagi
 minikube kubectl -- delete -f . # Akan menghapus semua yang ada di folder ini
 
 # hentikan minikube
 minikube stop
+```
+
+### Apply untuk DB saja (debug)
+
+#### Apply deployment
+
+```bash
+minikube kubectl -- apply -f db_backend-deployment.yml
+minikube kubectl -- apply -f db_backend-init-script-configmap.yml
+minikube kubectl -- apply -f db_backend-pvc.yml
+minikube kubectl -- apply -f db_backend-service.yml
+
+minikube kubectl -- apply -f db_verifikator-deployment.yml
+minikube kubectl -- apply -f db_verifikator-init-script-configmap.yml
+minikube kubectl -- apply -f db_verifikator-pvc.yml
+minikube kubectl -- apply -f db_verifikator-service.yml
+```
+
+#### Hapus semua yang berhubungan dengan DB
+
+```bash
+minikube kubectl -- delete deployment db-backend-deployment
+minikube kubectl -- delete service db-backend-service
+minikube kubectl -- delete configmap db-backend-init-script-config
+minikube kubectl -- delete pvc db-backend-pvc
+minikube kubectl -- delete pod -l app=db-backend
+
+minikube kubectl -- delete deployment db-verifikator-deployment
+minikube kubectl -- delete service db-verifikator-service
+minikube kubectl -- delete configmap db-verifikator-init-script-config
+minikube kubectl -- delete pvc db-verifikator-pvc
+minikube kubectl -- delete pod -l app=db-verifikator
+
+# verifikasi telah terhapus
+minikube kubectl -- get pvc
+
 ```

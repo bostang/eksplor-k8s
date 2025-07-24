@@ -4,20 +4,12 @@ metadata:
   name: db-backend-init-script-config
 data:
   init.sql: |
-    -- ===== UPDATED DATABASE SETUP SCRIPT =====
-    -- File: database_setup_for_login_attempts.sql
-    -- Jalankan dengan: psql postgres -f sql/database_setup_for_login_attempts.sql
+    -- Inisialisasi database untuk backend service
 
-    -- 1. Pastikan fungsi update_updated_at_column ada (jika belum ada di database postgres)
-    -- Jika fungsi ini sudah ada di instance PostgreSQL Anda, bagian ini bisa dilewati.
-    -- Anda bisa menjalankan ini sekali saja di database postgres default atau di setiap database baru.
-
-    -- 2. Create Database untuk Customer Registration
     DROP DATABASE IF EXISTS customer_registration;
     CREATE DATABASE customer_registration WITH OWNER = postgres;
-
-    -- 3. Setup Customer Registration Database
     \c customer_registration;
+    -- Akhir penambahan
 
     CREATE OR REPLACE FUNCTION update_updated_at_column()
     RETURNS TRIGGER AS $$
@@ -27,7 +19,7 @@ data:
     END;
     $$ LANGUAGE plpgsql;
 
-    -- Drop existing tables
+    -- Drop existing tables (ini akan dijalankan di database customer_registration setelah \c)
     DROP TABLE IF EXISTS customers CASCADE;
     DROP TABLE IF EXISTS alamat CASCADE;
     DROP TABLE IF EXISTS wali CASCADE;
@@ -113,20 +105,5 @@ data:
 
     -- Verify setup
     SELECT 'Database setup completed successfully!' as status;
-    \c customer_registration;
+    \c customer_registration; -- Ini akan mencoba terhubung kembali, mungkin tidak terlalu diperlukan di akhir skrip
     SELECT 'Customer Registration setup completed!' as status;
-    
-# apiVersion: v1
-# kind: ConfigMap
-# metadata:
-#   name: db-backend-init-script-config
-# data:
-#   init.sql: |
-#     -- Isi dari ./backend-secure-onboarding-system/sql/database_setup_DOCKER.sql
-#     -- Contoh isi:
-#     -- CREATE TABLE IF NOT EXISTS users (
-#     --     id SERIAL PRIMARY KEY,
-#     --     username VARCHAR(255) NOT NULL UNIQUE,
-#     --     password VARCHAR(255) NOT NULL
-#     -- );
-#     -- INSERT INTO users (username, password) VALUES ('admin', 'adminpassword');

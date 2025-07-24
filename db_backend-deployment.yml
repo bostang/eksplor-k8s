@@ -18,28 +18,12 @@ spec:
         - name: db-backend-persistent-storage
           persistentVolumeClaim:
             claimName: db-backend-pvc
-        - name: db-backend-init-script # Ini untuk menampung skrip SQL
+        - name: db-backend-init-script
           configMap:
             name: db-backend-init-script-config
-      initContainers:
-        - name: init-db-backend
-          image: postgres:17
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              until pg_isready -h db-backend-service -p 5432 -U postgres; do
-                echo "Waiting for db-backend-service to be ready..."
-                sleep 2
-              done
-              echo "db-backend-service is ready. Running init script."
-              # Jalankan skrip SQL menggunakan psql
-              psql -h db-backend-service -p 5432 -U postgres -d postgres -f /config/init.sql
-          volumeMounts:
-            - name: db-backend-init-script
-              mountPath: /config # Skrip akan tersedia di /config/init.sql
-          env:
-            - name: PGPASSWORD # Penting untuk psql
-              value: password
+            items:
+              - key: init.sql
+                path: init.sql
       containers:
         - name: db-backend
           image: postgres:17
@@ -55,86 +39,19 @@ spec:
           volumeMounts:
             - name: db-backend-persistent-storage
               mountPath: /var/lib/postgresql/data
+            - name: db-backend-init-script
+              mountPath: /docker-entrypoint-initdb.d
           livenessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
-            initialDelaySeconds: 15 # Tambah delay untuk memberi waktu inisialisasi awal
+            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
-            initialDelaySeconds: 15 # Tambah delay
+            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
----
-
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   name: db-backend-deployment
-#   labels:
-#     app: db-backend
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: db-backend
-#   template:
-#     metadata:
-#       labels:
-#         app: db-backend
-#     spec:
-#       volumes:
-#         - name: db-backend-persistent-storage
-#           persistentVolumeClaim:
-#             claimName: db-backend-pvc
-#         - name: db-backend-init-script
-#           configMap:
-#             name: db-backend-init-script-config
-#       initContainers:
-#         - name: init-db-backend
-#           image: postgres:17
-#           command: ["sh", "-c", "cp /config/init.sql /docker-entrypoint-initdb.d/init.sql && chmod +x /docker-entrypoint-initdb.d/init.sql"]
-#           volumeMounts:
-#             - name: db-backend-init-script
-#               mountPath: /config
-#             - name: db-backend-persistent-storage
-#               mountPath: /docker-entrypoint-initdb.d/
-#           env:
-#             - name: POSTGRES_USER
-#               value: postgres
-#             - name: POSTGRES_PASSWORD
-#               value: password
-#       containers:
-#         - name: db-backend
-#           image: postgres:17
-#           env:
-#             - name: POSTGRES_USER
-#               value: postgres
-#             - name: POSTGRES_PASSWORD
-#               value: password
-#             - name: POSTGRES_DB
-#               value: customer_registration
-#           ports:
-#             - containerPort: 5432
-#           volumeMounts:
-#             - name: db-backend-persistent-storage
-#               mountPath: /var/lib/postgresql/data
-#           livenessProbe:
-#             exec:
-#               command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
-#             initialDelaySeconds: 10
-#             periodSeconds: 5
-#             timeoutSeconds: 5
-#             failureThreshold: 5
-#           readinessProbe:
-#             exec:
-#               command: ["sh", "-c", "pg_isready -U postgres -d customer_registration"]
-#             initialDelaySeconds: 10
-#             periodSeconds: 5
-#             timeoutSeconds: 5
-#             failureThreshold: 5
-# ---

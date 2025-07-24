@@ -21,24 +21,9 @@ spec:
         - name: db-verifikator-init-script
           configMap:
             name: db-verifikator-init-script-config
-      initContainers:
-        - name: init-db-verifikator
-          image: postgres:17
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              until pg_isready -h db-verifikator-service -p 5432 -U postgres; do
-                echo "Waiting for db-verifikator-service to be ready..."
-                sleep 2
-              done
-              echo "db-verifikator-service is ready. Running init script."
-              psql -h db-verifikator-service -p 5432 -U postgres -d postgres -f /config/init.sql
-          volumeMounts:
-            - name: db-verifikator-init-script
-              mountPath: /config
-          env:
-            - name: PGPASSWORD
-              value: password
+            items:
+              - key: init.sql
+                path: init.sql
       containers:
         - name: db-verifikator
           image: postgres:17
@@ -54,6 +39,8 @@ spec:
           volumeMounts:
             - name: db-verifikator-persistent-storage
               mountPath: /var/lib/postgresql/data
+            - name: db-verifikator-init-script
+              mountPath: /docker-entrypoint-initdb.d
           livenessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U postgres -d dukcapil_ktp"]
@@ -68,72 +55,3 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
----
-
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   name: db-verifikator-deployment
-#   labels:
-#     app: db-verifikator
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: db-verifikator
-#   template:
-#     metadata:
-#       labels:
-#         app: db-verifikator
-#     spec:
-#       volumes:
-#         - name: db-verifikator-persistent-storage
-#           persistentVolumeClaim:
-#             claimName: db-verifikator-pvc
-#         - name: db-verifikator-init-script
-#           configMap:
-#             name: db-verifikator-init-script-config
-#       initContainers:
-#         - name: init-db-verifikator
-#           image: postgres:17
-#           command: ["sh", "-c", "cp /config/init.sql /docker-entrypoint-initdb.d/init.sql && chmod +x /docker-entrypoint-initdb.d/init.sql"]
-#           volumeMounts:
-#             - name: db-verifikator-init-script
-#               mountPath: /config
-#             - name: db-verifikator-persistent-storage
-#               mountPath: /docker-entrypoint-initdb.d/
-#           env:
-#             - name: POSTGRES_USER
-#               value: postgres
-#             - name: POSTGRES_PASSWORD
-#               value: password
-#       containers:
-#         - name: db-verifikator
-#           image: postgres:17
-#           env:
-#             - name: POSTGRES_USER
-#               value: postgres
-#             - name: POSTGRES_PASSWORD
-#               value: password
-#             - name: POSTGRES_DB
-#               value: dukcapil_ktp
-#           ports:
-#             - containerPort: 5432
-#           volumeMounts:
-#             - name: db-verifikator-persistent-storage
-#               mountPath: /var/lib/postgresql/data
-#           livenessProbe:
-#             exec:
-#               command: ["sh", "-c", "pg_isready -U postgres -d dukcapil_ktp"]
-#             initialDelaySeconds: 10
-#             periodSeconds: 5
-#             timeoutSeconds: 5
-#             failureThreshold: 5
-#           readinessProbe:
-#             exec:
-#               command: ["sh", "-c", "pg_isready -U postgres -d dukcapil_ktp"]
-#             initialDelaySeconds: 10
-#             periodSeconds: 5
-#             timeoutSeconds: 5
-#             failureThreshold: 5
-# ---
