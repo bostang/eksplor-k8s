@@ -1,6 +1,14 @@
 # Testing
 
-## Curl
+## Register
+
+**Langkah 1** : Masuk ke pods backend
+
+```bash
+minikube kubectl -- exec -it <<nama_deployment_backend>> -- /bin/bash
+```
+
+**Langkah 2** : Uji Register
 
 ```bash
 curl -X POST "http://localhost:8080/api/auth/register" \

@@ -1,5 +1,37 @@
 # eksplor-k8s
 
+## Cara Menjalankan
+
+```bash
+# LANGKAH 0 : PASTIKAN MINIKUBE SUDAH TERINSTALL DAN BERJALAN
+
+# JALANKAN SCRIPT OTOMASI U/ TAMBAHKAN IP MINIKUBE KE INGRESS URL
+./add_host_minikube.sh
+
+# JALANKAN SCRIPT UNTUK MEMULAI SEMUA PODS
+./k8s-mng.sh --run
+```
+
+## Setting Ingress
+
+**langkah 0**. instalasi:
+
+```bash
+minikube addons enable ingress
+```
+
+**langkah 1**. buat manifest ingress `frontend-ingress.yml`.
+
+**langkah 2.** Perbarui File `/etc/hosts` (Lokal):
+Untuk menguji Ingress secara lokal di Minikube, kita perlu memetakan nama domain ke IP Minikube.
+
+Dapatkan IP Minikube: `minikube ip` (misalnya, `192.168.49.2`)
+Tambahkan entri ke `/etc/hosts` (atau `C:\Windows\System32\drivers\etc\hosts` di Windows):
+
+```c
+192.168.49.2 wondr.desktop.com
+```
+
 ## Catatan Command
 
 ### Cek IP dari minikube
@@ -161,25 +193,4 @@ sed -i "s|value: \"http://$(minikube ip):$(minikube kubectl -- get service front
 minikube kubectl -- apply -f backend-deployment.yaml
 
 echo "Deployment backend diperbarui."
-```
-
-## Ingress
-
-langkah 0. instalasi:
-
-```bash
-minikube addons enable ingress
-```
-
-langkah 1. buat manifest ingress untuk FE dan BE.
-
-langkah 2. Perbarui File `/etc/hosts` (Lokal):
-Untuk menguji Ingress secara lokal di Minikube, kita perlu memetakan nama domain ke IP Minikube.
-
-Dapatkan IP Minikube: `minikube ip` (misalnya, `192.168.49.2`)
-Tambahkan entri ke `/etc/hosts` (atau `C:\Windows\System32\drivers\etc\hosts` di Windows):
-
-```c
-192.168.49.2 frontend.regis.com
-192.168.49.2 api.regis.com
 ```
