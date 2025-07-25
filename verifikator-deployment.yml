@@ -14,6 +14,10 @@ spec:
       labels:
         app: verifikator
     spec:
+      initContainers: # <-- TAMBAHKAN BAGIAN INI
+        - name: wait-for-db-verifikator
+          image: busybox:latest # Menggunakan image ringan yang memiliki 'nc' (netcat)
+          command: ["sh", "-c", "echo 'Waiting for db-verifikator-service...'; until nc -z db-verifikator-service 5432; do echo 'Waiting for db-verifikator-service...'; sleep 2; done; echo 'db-verifikator-service is up and reachable!';"]
       containers:
         - name: verifikator
           image: bostang/secure-onboarding-system-verifikator:latest
@@ -26,18 +30,20 @@ spec:
               value: password
             - name: SERVER_PORT
               value: "8081"
+            # Tambahkan variabel lingkungan lain yang dibutuhkan aplikasi verifikator Anda
           ports:
             - containerPort: 8081
           livenessProbe:
             httpGet:
               path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
               port: 8081
-            initialDelaySeconds: 30
+            initialDelaySeconds: 45 # Ditingkatkan dari 30
             periodSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
               port: 8081
-            initialDelaySeconds: 30
+            initialDelaySeconds: 30 # Ditingkatkan dari 30
             periodSeconds: 10
----
+            failureThreshold: 3

@@ -14,34 +14,75 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:latest
+          command: ["sh", "-c", "echo 'Waiting for db-backend-service...'; until nc -z db-backend-service 5432; do echo 'Waiting for db-backend-service...'; sleep 2; done; echo 'db-backend-service is up and reachable!';"]
       containers:
         - name: backend
-          image: bostang/secure-onboarding-system-backend:latest
+          image: bostang/secure-onboarding-system-backend:latest # Pastikan ini adalah image terbaru
           env:
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://db-backend-service:5432/customer_registration
-            - name: SPRING_DATASOURCE_USERNAME
+            # --- Variabel Lingkungan dari .env Anda ---
+            # Database Configuration (DB_PASSWORD harus dari Secret)
+            - name: DB_URL
+              value: jdbc:postgresql://db-backend-service:5432/customer_registration # Menggunakan nama service Kubernetes
+            - name: DB_USERNAME
               value: postgres
-            - name: SPRING_DATASOURCE_PASSWORD
-              value: password
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets # Nama Secret Kubernetes yang akan Anda buat
+                  key: db-password     # Kunci di dalam Secret untuk password DB
+
+            # JWT Configuration (JWT_SECRET harus dari Secret)
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets # Nama Secret Kubernetes
+                  key: jwt-secret      # Kunci di dalam Secret untuk JWT secret
+            - name: JWT_EXPIRATION
+              value: "86400000" # Nilai numerik sebagai string
+
+            # Server Port
             - name: SERVER_PORT
               value: "8080"
-            - name: JWT_SECRET
-              value: superSecretKeyForHS512AlgorithmThatIsAtLeastSixtyFourCharactersLongForStrongSecurity12345!@#$%^&*()
-            - name: JWT_EXPIRATION
-              value: "86400000"
+
+            # Firebase Config Path (Jika file ini berisi data sensitif, pertimbangkan Secret atau ConfigMap untuk file)
+            # Jika file ini ada di dalam image (seperti yang Anda COPY di Dockerfile),
+            # maka ini hanya path ke file tersebut.
+            - name: FIREBASE_CONFIG_PATH
+              value: "model-parsec-465503-p3-firebase-adminsdk-fbsvc-1e9901efad.json"
+
+            # Internal Service URLs (Menggunakan nama service Kubernetes)
+            - name: BACKEND_BASE_URL
+              value: http://backend-service:8080
+            - name: DUKCAPIL_SERVICE_URL
+              value: http://verifikator-service:8081
+
+            # FRONTEND_URL (Dinamis dari Minikube)
+            - name: FRONTEND_URL
+              value: "http://192.168.49.2:31281" # Ini akan diubah oleh skrip k8s-mng.sh
+              # value: "http://$(minikube ip):$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}')"
+              # nilai secara dinamis diubah oleh k8s-mng.sh
+
+            # Spring Profile (dari application.properties)
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            # --- Akhir Variabel Lingkungan ---
+
           ports:
             - containerPort: 8080
           livenessProbe:
             httpGet:
-              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              path: /actuator/health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /actuator/health # Sesuaikan dengan endpoint health check Spring Boot Anda
+              path: /actuator/health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 45
             periodSeconds: 10
----
+            failureThreshold: 3

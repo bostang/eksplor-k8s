@@ -2,6 +2,12 @@
 
 ## Catatan Command
 
+### Cek IP dari minikube
+
+```bash
+minikube ip
+```
+
 ### Debugging pods
 
 ```bash
@@ -19,6 +25,8 @@ minikube kubectl -- exec -it db-verifikator-deployment-8577fd7498-tjqpd -- psql 
 
 # setelah melakukan kubectl apply, bisa tunggu hingga container ready dengan:
 minikube kubectl -- get pods -w     # -w : watch
+
+minikube kubectl -- logs backend-deployment-558b488746-fc72j -f  # -f : follow
 ```
 
 ### Flow Dasar
@@ -96,4 +104,61 @@ minikube kubectl -- get pvc
 ```bash
 minikube kubectl -- get pv
 minikube kubectl -- delete pv [nama-pv]
+```
+
+## Catatan Tambahan
+
+### Konfigurasi CORS untuk backend agar allow frontned
+
+Catatan: Anda perlu memperbarui nilai value untuk FRONTEND_URL setiap kali NodePort frontend berubah. Ini bisa diotomatisasi dengan skrip CI/CD yang membaca NodePort dan kemudian memperbarui deployment YAML sebelum menerapkan.
+
+Cek IP frontend:
+
+```bash
+FRONTEND_IP=$(minikube ip)
+FRONTEND_NODEPORT=$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}')
+ACTUAL_FRONTEND_URL="http://${FRONTEND_IP}:${FRONTEND_NODEPORT}"
+echo "Frontend URL yang sebenarnya: ${ACTUAL_FRONTEND_URL}"
+# contoh output: Frontend URL yang sebenarnya: http://192.168.49.2:32138 
+```
+
+pada manifest backend (deployment):
+
+```yaml
+ # FRONTEND_URL (Ganti baris ini dengan nilai yang dievaluasi)
+- name: FRONTEND_URL
+    value: "http://192.168.49.2:32138" # Ganti dengan nilai ACTUAL_FRONTEND_URL
+```
+
+lalu apply lagi :
+
+```bash
+minikube kubectl -- apply -f backend-deployment.yaml
+```
+
+contoh script otomatisasi untuk CI/CD:
+
+```bash
+#!/bin/bash
+
+# Dapatkan IP Minikube dan NodePort Frontend
+FRONTEND_IP=$(minikube ip)
+FRONTEND_NODEPORT=$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}')
+ACTUAL_FRONTEND_URL="http://${FRONTEND_IP}:${FRONTEND_NODEPORT}"
+
+echo "Menggunakan Frontend URL: ${ACTUAL_FRONTEND_URL}"
+
+# Ganti placeholder di YAML dengan nilai yang sebenarnya
+# Gunakan sed atau yq/jsonnet untuk manipulasi YAML yang lebih robust
+# Contoh sederhana dengan sed (pastikan Anda hanya memiliki satu baris FRONTEND_URL)
+sed -i "s|value: \"http://$(minikube ip):$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}')\"|value: \"${ACTUAL_FRONTEND_URL}\"|" backend-deployment.yaml
+
+# Atau jika Anda menggunakan placeholder yang lebih eksplisit di YAML:
+# value: "FRONTEND_URL_PLACEHOLDER"
+# sed -i "s|FRONTEND_URL_PLACEHOLDER|${ACTUAL_FRONTEND_URL}|" backend-deployment.yaml
+
+# Terapkan deployment
+minikube kubectl -- apply -f backend-deployment.yaml
+
+echo "Deployment backend diperbarui."
 ```

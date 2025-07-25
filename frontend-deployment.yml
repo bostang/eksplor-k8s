@@ -18,9 +18,9 @@ spec:
         - name: frontend
           image: bostang/secure-onboarding-system-frontend:latest
           env:
-            - name: VITE_API_BASE_URL_BACKEND
+            - name: VITE_BACKEND_BASE_URL
               value: http://backend-service:8080 # Menggunakan nama service Kubernetes
-            - name: VITE_API_BASE_URL_VERIFICATOR
+            - name: VITE_VERIFICATOR_BASE_URL
               value: http://verifikator-service:8081 # Menggunakan nama service Kubernetes
           ports:
             - containerPort: 80
