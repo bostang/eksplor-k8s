@@ -2,6 +2,10 @@
 
 ## Cara Menjalankan
 
+### Cara Otomatis (script)
+
+> only works in linux
+
 ```bash
 # LANGKAH 0 : PASTIKAN MINIKUBE SUDAH TERINSTALL DAN BERJALAN
 
@@ -12,7 +16,9 @@
 ./k8s-mng.sh --run
 ```
 
-## Setting Ingress (CARA MANUAL JIKA SCRIPT LANGKAH 1 TIDAK BISA (KARENA NON-LINUX))
+### Setting Ingress 
+
+> (CARA MANUAL JIKA SCRIPT LANGKAH 1 TIDAK BISA (KARENA NON-LINUX))
 
 **langkah 0**. instalasi:
 
@@ -28,7 +34,9 @@ Untuk menguji Ingress secara lokal di Minikube, kita perlu memetakan nama domain
 Dapatkan IP Minikube: `minikube ip` (misalnya, `192.168.49.2`)
 Tambahkan entri ke `/etc/hosts` (atau `C:\Windows\System32\drivers\etc\hosts` di Windows):
 
-## MENJALANKAN PODS (CARA MANUAL JIKA SCRIPT LANGKAH 2 TIDAK BISA (KARENA NON-LINUX))
+### MENJALANKAN PODS
+
+> (CARA MANUAL JIKA SCRIPT LANGKAH 2 TIDAK BISA (KARENA NON-LINUX))
 
 ```bash
 minikube kubectl -- apply -f .
@@ -37,7 +45,7 @@ minikube kubectl -- get pods -w
  # tunggu sampai semua pod RUNNING & READY. (biasanya butuh sekitar 2 menit).
 ```
 
-## Setting Ingress (CARA MANUAL JIKA SCRIPT LANGKAH 1 TIDAK BISA (KARENA NON-LINUX))
+maka tampilan di `\etc\hosts` akan bertambah kurang lebih seperti :
 
 ```c
 192.168.49.2 wondr.desktop.com
