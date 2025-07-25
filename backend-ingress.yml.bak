@@ -1,0 +1,23 @@
+# TIDAK JADI DITERAPKAN KARENA BACKEND HANYA BERKOMUNIKASI DENGAN FRONTEND DAN VERIFIKATOR
+# YANG ADA DI DALAM SATU NAMESPACE
+# backend-ingress.yml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /api/$2 # Sesuaikan dengan context path Spring Boot Anda
+    # Jika Spring Boot Anda di /api, maka request ke /api/auth/login akan dirute ke /auth/login
+    # Jika tidak ada context path, cukup rewrite-target: /$2
+spec:
+  rules:
+  - host: api.regis.com # Ganti dengan nama domain API Anda
+    http:
+      paths:
+      - path: /api(/|$)(.*) # Sesuaikan dengan context path Spring Boot Anda
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080 # Port internal container Spring Boot

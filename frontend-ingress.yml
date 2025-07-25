@@ -1,0 +1,51 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  annotations:
+    # Aktifkan penggunaan regex untuk path di Ingress ini
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Anotasi rewrite-target harus berada di sini (metadata.annotations),
+    # dan akan berlaku untuk aturan path yang menggunakan grup tangkapan (seperti $1 atau $2).
+    # Namun, untuk kasus ini, jika frontend memanggil path yang sudah sesuai dengan context-path backend,
+    # kita tidak memerlukan rewrite-target di sini.
+    # Misalnya, jika frontend memanggil /api/auth/login dan backend mengharapkan /api/auth/login,
+    # maka tidak perlu rewrite.
+spec:
+  rules:
+  - host: wondr.desktop.com
+    http:
+      paths:
+      - path: / # Rule untuk frontend statis
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+      # Rule untuk API Backend
+      # Frontend memanggil /api/auth/...
+      # Backend memiliki context-path /api dan endpoint /auth/...
+      # Jadi, kita ingin meneruskan path lengkap seperti /api/auth/...
+      - path: /api/auth(/|$)(.*) # Cocokkan /api/auth atau /api/auth/sesuatu
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+        # Tidak perlu rewrite-target di sini karena path sudah sesuai
+
+      # Rule untuk API Verifikator
+      # Frontend memanggil /api/dukcapil/...
+      # Verifikator memiliki context-path /api dan endpoint /dukcapil/...
+      # Jadi, kita ingin meneruskan path lengkap seperti /api/dukcapil/...
+      - path: /api/dukcapil(/|$)(.*) # Cocokkan /api/dukcapil atau /api/dukcapil/sesuatu
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: verifikator-service
+            port:
+              number: 8081
+        # Tidak perlu rewrite-target di sini karena path sudah sesuai

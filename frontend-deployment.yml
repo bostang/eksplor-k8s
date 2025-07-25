@@ -18,10 +18,14 @@ spec:
         - name: frontend
           image: bostang/secure-onboarding-system-frontend:latest
           env:
+            # - name: VITE_BACKEND_BASE_URL
+            #   value: http://backend-service:8080 # Menggunakan nama service Kubernetes
+            # - name: VITE_VERIFICATOR_BASE_URL
+            #   value: http://verifikator-service:8081 # Menggunakan nama service Kubernetes
             - name: VITE_BACKEND_BASE_URL
-              value: http://backend-service:8080 # Menggunakan nama service Kubernetes
+              value: "http://wondr.desktop.com" # menyesuaikan logika ingress
             - name: VITE_VERIFICATOR_BASE_URL
-              value: http://verifikator-service:8081 # Menggunakan nama service Kubernetes
+              value: "http://wondr.desktop.com"
           ports:
             - containerPort: 80
 ---

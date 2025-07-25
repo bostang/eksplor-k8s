@@ -1,3 +1,9 @@
+# VERSI KETIKA MENGGUNAKAN TANPA INGRESS
+# IP FRONTEND HARUS DISET DI DEPLOYMENT BACKEND
+# PASTIKAN FRONTEND URL DISET DI DEPLOYMENT BACKEND SEBELUM MENERAPKAN
+# PENDEKATAN YANG KURANG EFEKTIF UNTUK DEPLOYMENT DI MINIKUBE
+# KARENA DEPLOYMENT DEPENDENCY ANTARA FRONTEND DAN BACKEND
+# SERTA KETIDAKSTABILAN NODEPORT DI MINIKUBE
 #!/bin/bash
 
 # Script untuk mengelola deployment aplikasi di Minikube
@@ -19,7 +25,7 @@ run_app() {
     echo "Menerapkan resource dasar (Secrets, ConfigMaps, PVCs, Services)..."
     # Terapkan resource yang tidak bergantung pada NodePort dinamis atau deployment lainnya
     # Urutan penting untuk dependensi (misal: Secret sebelum Deployment yang menggunakannya)
-    minikube kubectl -- apply -f backend-secrets.yml
+    minikube kubectl -- apply -f backend-secrets.yaml
     minikube kubectl -- apply -f db_backend-init-script-configmap.yml
     minikube kubectl -- apply -f db_verifikator-init-script-configmap.yml
     minikube kubectl -- apply -f db_backend-pvc.yml
@@ -27,34 +33,59 @@ run_app() {
     minikube kubectl -- apply -f backend-service.yml
     minikube kubectl -- apply -f db_backend-service.yml
     minikube kubectl -- apply -f db_verifikator-service.yml
-    minikube kubectl -- apply -f frontend-service.yml
+    minikube kubectl -- apply -f frontend-service.yml # Frontend service harus ada untuk mendapatkan NodePort-nya
     minikube kubectl -- apply -f verifikator-service.yml
 
-    echo "Menunggu sebentar agar services siap..."
-    sleep 5 # Beri waktu sebentar agar service benar-benar terdaftar
+    echo "Menunggu sebentar agar services siap dan NodePort dialokasikan..."
+    # Beri waktu yang cukup agar service benar-benar terdaftar dan siap di API server
+    sleep 10
 
-    echo "Menerapkan Ingress Resources (hanya untuk Frontend)..."
-    minikube kubectl -- apply -f frontend-ingress.yml # Hanya frontend yang terekspos via Ingress
+    echo "Mendapatkan URL Frontend yang dinamis..."
+    MINIKUBE_IP=$(minikube ip)
+    if [ -z "$MINIKUBE_IP" ]; then
+        echo "Gagal mendapatkan IP Minikube. Pastikan Minikube berjalan dengan baik."
+        exit 1
+    fi
 
-    echo "Menerapkan Deployment..."
+    # Coba mendapatkan NodePort, ulangi jika belum tersedia
+    FRONTEND_NODEPORT=""
+    RETRY_COUNT=0
+    MAX_RETRIES=10
+    while [ -z "$FRONTEND_NODEPORT" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        FRONTEND_NODEPORT=$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+        if [ -z "$FRONTEND_NODEPORT" ]; then
+            echo "Menunggu NodePort frontend-service... ($((RETRY_COUNT+1))/${MAX_RETRIES})"
+            sleep 5
+            RETRY_COUNT=$((RETRY_COUNT+1))
+        fi
+    done
+
+    if [ -z "$FRONTEND_NODEPORT" ]; then
+        echo "Gagal mendapatkan NodePort untuk frontend-service setelah beberapa percobaan. Pastikan frontend-service terdeploy dengan benar."
+        exit 1
+    fi
+
+    ACTUAL_FRONTEND_URL="http://${MINIKUBE_IP}:${FRONTEND_NODEPORT}"
+    echo "Frontend URL yang terdeteksi: ${ACTUAL_FRONTEND_URL}"
+
+    echo "Menggenerasi backend-deployment.yml dari template dengan FRONTEND_URL yang dinamis..."
+    # Baca dari template, lakukan substitusi, dan tulis ke file .yml yang sebenarnya
+    sed "s|FRONTEND_URL_PLACEHOLDER|${ACTUAL_FRONTEND_URL}|" backend-deployment.yml.template > backend-deployment.yml
+    
+    # Optional: Jika verifikator-deployment juga perlu FRONTEND_URL atau nilai dinamis lainnya,
+    # Anda bisa memodifikasinya di sini dengan cara yang sama.
+    # sed "s|VERIFICATOR_FRONTEND_URL_PLACEHOLDER|${ACTUAL_FRONTEND_URL}|" verifikator-deployment.yml.template > verifikator-deployment.yml
+
+    echo "Menerapkan Deployment (termasuk yang dimodifikasi)..."
     # Terapkan Deployments dalam urutan yang logis (misal: database dulu, lalu backend, frontend, verifikator)
     minikube kubectl -- apply -f db_backend-deployment.yml
     minikube kubectl -- apply -f db_verifikator-deployment.yml
-    minikube kubectl -- apply -f backend-deployment.yml
+    minikube kubectl -- apply -f backend-deployment.yml # Ini adalah file yang baru saja digenerasi
     minikube kubectl -- apply -f frontend-deployment.yml
     minikube kubectl -- apply -f verifikator-deployment.yml
 
     echo "Deployment selesai. Memeriksa status semua resource..."
     minikube kubectl -- get all
-
-    echo ""
-    echo "Aplikasi Anda sekarang dapat diakses melalui Ingress (Frontend)."
-    echo "Pastikan Anda telah menambahkan entri ke file /etc/hosts Anda (atau setara di Windows):"
-    echo "  $(minikube ip) wondr.desktop.com"
-    echo "Kemudian akses frontend di browser Anda melalui: http://wondr.desktop.com"
-    echo ""
-    echo "Backend API diakses secara internal oleh frontend melalui: http://backend-service:8080"
-    echo "Verifikator API diakses secara internal oleh frontend melalui: http://verifikator-service:8081"
 }
 
 # Fungsi untuk menghentikan (delete) aplikasi
@@ -63,6 +94,9 @@ stop_app() {
 
     echo "Menghapus semua resource Kubernetes..."
     minikube kubectl -- delete -f .
+
+    echo "Menghapus file backend-deployment.yml yang digenerasi..."
+    rm -f backend-deployment.yml # Hapus file yang digenerasi
 
     echo "Penghapusan selesai. Memeriksa status..."
     minikube kubectl -- get all
@@ -81,6 +115,18 @@ get_logs() {
     minikube kubectl -- logs -f deployment/${deployment_name}
 }
 
+get_pods() {
+    check_minikube_status
+    echo "Daftar Pods yang ada:"
+    minikube kubectl -- get pods
+}
+
+get_services() {
+    check_minikube_status
+    echo "Daftar Services yang ada:"
+    minikube kubectl -- get services
+}
+
 # Fungsi untuk mendapatkan URL frontend service
 get_frontend_url() {
     check_minikube_status
@@ -97,10 +143,8 @@ get_frontend_url() {
         exit 1
     fi
 
-    echo "URL Frontend Service (NodePort): http://${MINIKUBE_IP}:${FRONTEND_NODEPORT}"
-    echo ""
-    echo "Untuk akses melalui Ingress, gunakan domain yang sudah Anda atur di /etc/hosts:"
-    echo "  http://wondr.desktop.com"
+    echo "URL Frontend Service Anda: http://${MINIKUBE_IP}:${FRONTEND_NODEPORT}"
+    echo "Anda dapat mengaksesnya di browser Anda."
 }
 
 # Fungsi untuk mengeksekusi perintah di dalam container deployment tertentu
@@ -146,18 +190,6 @@ get_env() {
     minikube kubectl -- exec -it ${POD_NAME} -- env
 }
 
-get_pods() {
-    check_minikube_status
-    echo "Mendapatkan daftar pods..."
-    minikube kubectl -- get pods
-}
-
-get_services() {
-    check_minikube_status
-    echo "Mendapatkan daftar services..."
-    minikube kubectl -- get services
-}
-
 
 # Logika argumen
 case "$1" in
@@ -178,21 +210,21 @@ case "$1" in
         shift
         exec_command "$@"
         ;;
-    --env)
-        get_env "$2"
-        ;;
     --pods)
         get_pods
         ;;
     --services)
         get_services
         ;;
+    --env)
+        get_env "$2"
+        ;;
     *)
-        echo "Penggunaan: $0 [--run | --stop | --logs <nama_deployment> | --url | --exec <nama_deployment> <perintah> | --env <nama_deployment> | --pods | --services]"
-        echo "  --run : Menerapkan semua manifest Kubernetes (termasuk Ingress)."
+        echo "Penggunaan: $0 [--run | --stop | --logs <nama_deployment> | --url | --exec <nama_deployment> <perintah> | --env <nama_deployment>]"
+        echo "  --run : Menerapkan semua manifest Kubernetes dan menyesuaikan FRONTEND_URL."
         echo "  --stop: Menghapus semua resource Kubernetes."
         echo "  --logs <nama_deployment>: Melihat log dari deployment tertentu (misal: backend-deployment, frontend-deployment)."
-        echo "  --url : Menampilkan URL frontend service (NodePort) dan URL Ingress untuk diakses di browser."
+        echo "  --url : Menampilkan URL frontend service untuk diakses di browser."
         echo "  --exec <nama_deployment> <perintah>: Mengeksekusi perintah di dalam container deployment (misal: bash, ls -l)."
         echo "  --env <nama_deployment>: Menampilkan variabel lingkungan dari container deployment."
         echo "  --pods : Menampilkan daftar pods yang ada."

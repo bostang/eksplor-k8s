@@ -61,7 +61,7 @@ spec:
 
             # FRONTEND_URL (Dinamis dari Minikube)
             - name: FRONTEND_URL
-              value: "http://wondr.desktop.com" # ingress akan mengarahkan ke frontend
+              value: "FRONTEND_URL_PLACEHOLDER" # Ini akan diubah oleh skrip k8s-mng.sh
               # value: "http://$(minikube ip):$(minikube kubectl -- get service frontend-service -o jsonpath='{.spec.ports[0].nodePort}')"
               # nilai secara dinamis diubah oleh k8s-mng.sh
 
@@ -74,14 +74,14 @@ spec:
             - containerPort: 8080
           livenessProbe:
             httpGet:
-              path: /api/actuator/health # Change from /actuator/health
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /api/actuator/health # Change from /actuator/health
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 45
             periodSeconds: 10
